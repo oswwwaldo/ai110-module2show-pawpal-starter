@@ -12,7 +12,9 @@
 **b. Design changes**
 
 - Did your design change during implementation?
+  - Yes
 - If yes, describe at least one change and why you made it.
+  - Copilot recommended splitting the file into a pure dataclasses bit and into a service layer bitto ensure separation of concerns and easier testing. I also got AI to spotcheck my design and offer a ScheduleItem class to ensure the transition from Task to Schedule is seamless and easy. I realized that Task appearing in two different ways in two different contexts didn't make a lot of sense and could get confusing too. Although I admit in hindsight I probably should've stuck closer to a simpler version of the assignment but I really wanted to do something different. 
 
 ---
 
