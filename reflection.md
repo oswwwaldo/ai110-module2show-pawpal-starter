@@ -5,7 +5,9 @@
 **a. Initial design**
 
 - Briefly describe your initial UML design.
+  - I definitely want to be comprehensive to go a bit beyond the project so I will take this top a notch. My initial list of attributes and methods were informed by observing Sims, my Microsoft To-Do and Google Calendar for inspiration and basic scaffolding. The owner owns pet(s) that have varying levels of attributes that the owner then manages tasks for, to which the program will automatically provide a schedule based on the owner's attributes. 
 - What classes did you include, and what responsibilities did you assign to each?
+  - I included an Owner, Pet, Task and Schedule class. The owner is responsible for creating and managing tasks and their pets, and the tasks is responsible for being compiled into the schedule. 
 
 **b. Design changes**
 

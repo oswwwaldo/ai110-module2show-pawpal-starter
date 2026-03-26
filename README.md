@@ -22,16 +22,11 @@ Your final app should:
 - Display the plan clearly (and ideally explain the reasoning)
 - Include tests for the most important scheduling behaviors
 
-## Getting started
-
-### Setup
-
-```bash
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-```
-
+## Core actions
+- Create, read, update and destroy pets
+- Create, read, update and destroy tasks in a plan
+- Create, read, update and destroy daily schedules/plans while generating them based on plans
+  
 ### Suggested workflow
 
 1. Read the scenario carefully and identify requirements and edge cases.
