@@ -1,3 +1,5 @@
+"""Service layer for PawPal+: Workflow orchestration and business logic."""
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta
@@ -7,12 +9,16 @@ from pawpal_system import Owner, Pet, Schedule, ScheduleItem, Task
 
 
 class OwnerService:
+    """Manages owner creation and pet/task ownership relationships."""
+
     @staticmethod
     def create_owner(name: str, age: int, **kwargs: object) -> Owner:
+        """Create a new owner with optional additional parameters."""
         return Owner(name=name, age=age, **kwargs)
 
     @staticmethod
     def add_pet(owner: Owner, pet: Pet) -> Pet:
+        """Add a pet to an owner, setting ownership reference."""
         pet.owner_reference = owner
         if all(existing.pet_id != pet.pet_id for existing in owner.pets):
             owner.pets.append(pet)
@@ -20,6 +26,7 @@ class OwnerService:
 
     @staticmethod
     def remove_pet(owner: Owner, pet_id: str) -> bool:
+        """Remove a pet from owner and cascade delete related tasks."""
         for idx, pet in enumerate(owner.pets):
             if pet.pet_id == pet_id:
                 owner.pets.pop(idx)
@@ -29,6 +36,7 @@ class OwnerService:
 
     @staticmethod
     def add_task(owner: Owner, task: Task) -> Task:
+        """Add a task to owner with ownership consistency validation."""
         task.owner_reference = owner
         if task.pet_reference is not None and task.pet_reference.owner_reference is not None:
             if task.pet_reference.owner_reference.owner_id != owner.owner_id:
@@ -39,6 +47,7 @@ class OwnerService:
 
     @staticmethod
     def remove_task(owner: Owner, task_id: str) -> bool:
+        """Remove a task from owner by task ID."""
         for idx, task in enumerate(owner.tasks):
             if task.task_id == task_id:
                 owner.tasks.pop(idx)
@@ -47,14 +56,18 @@ class OwnerService:
 
     @staticmethod
     def get_pet(owner: Owner, pet_id: str) -> Pet | None:
+        """Retrieve a pet by ID from owner's pet list."""
         return next((pet for pet in owner.pets if pet.pet_id == pet_id), None)
 
     @staticmethod
     def get_task(owner: Owner, task_id: str) -> Task | None:
+        """Retrieve a task by ID from owner's task list."""
         return next((task for task in owner.tasks if task.task_id == task_id), None)
 
 
 class PetService:
+    """Manages pet creation and lifecycle operations."""
+
     @staticmethod
     def create_pet(
         owner: Owner,
@@ -64,11 +77,13 @@ class PetService:
         age: int,
         **kwargs: object,
     ) -> Pet:
+        """Create a new pet and add it to owner."""
         pet = Pet(pet_type=pet_type, breed=breed, name=name, age=age, **kwargs)
         return OwnerService.add_pet(owner, pet)
 
     @staticmethod
     def update_pet(pet: Pet, **fields: object) -> Pet:
+        """Update pet fields with strict validation for unknown attributes."""
         for key, value in fields.items():
             if hasattr(pet, key):
                 setattr(pet, key, value)
@@ -78,6 +93,8 @@ class PetService:
 
 
 class TaskService:
+    """Manages task creation, update, and deletion with ownership validation."""
+
     @staticmethod
     def create_task(
         owner: Owner,
@@ -88,6 +105,7 @@ class TaskService:
         duration: int,
         **kwargs: object,
     ) -> Task:
+        """Create a new task assigned to owner and pet with consistency checks."""
         if pet.owner_reference is not None and pet.owner_reference.owner_id != owner.owner_id:
             raise ValueError("pet does not belong to owner")
 
@@ -104,11 +122,13 @@ class TaskService:
 
     @staticmethod
     def update_task(task: Task, **fields: object) -> Task:
+        """Update task fields using model validation via Task.edit()."""
         task.edit(fields)
         return task
 
     @staticmethod
     def delete_task(owner: Owner, task_id: str, schedule: Schedule | None = None) -> bool:
+        """Delete a task from owner and optionally prune schedule references."""
         deleted = OwnerService.remove_task(owner, task_id)
         if not deleted:
             return False
@@ -120,6 +140,7 @@ class TaskService:
 
     @staticmethod
     def list_tasks_for_pet(owner: Owner, pet_id: str) -> list[Task]:
+        """Retrieve all tasks for a specific pet owned by the owner."""
         return [
             task
             for task in owner.tasks
@@ -151,6 +172,7 @@ class ScheduleService:
 
     @staticmethod
     def set_owner(schedule: Schedule, owner: Owner) -> Schedule:
+        """Associate an owner with a schedule and populate pets in scope."""
         schedule.owner_reference = owner
         schedule.pets_in_scope = list(owner.pets)
         return schedule
@@ -164,6 +186,7 @@ class ScheduleService:
         end_at: datetime,
         state: Literal["pending", "expired", "completed"] = "pending",
     ) -> ScheduleItem:
+        """Add a timed schedule item with validation for overlap and consistency."""
         if state not in ScheduleService.VALID_STATES:
             raise ValueError("state must be one of: pending, expired, completed")
         if end_at <= start_at:
@@ -203,6 +226,7 @@ class ScheduleService:
         available_minutes: int,
         start_time: datetime | None = None,
     ) -> list[ScheduleItem]:
+        """Generate an optimal daily plan using priority-based task selection."""
         if available_minutes <= 0:
             schedule.schedule_items = []
             schedule.planned_tasks = []
@@ -247,6 +271,7 @@ class ScheduleService:
 
     @staticmethod
     def complete_item(schedule: Schedule, item_id: str) -> bool:
+        """Mark a schedule item as completed."""
         for item in schedule.schedule_items:
             if item.item_id == item_id:
                 item.state = "completed"
@@ -259,6 +284,7 @@ class ScheduleService:
         item_id: str,
         state: Literal["pending", "expired", "completed"],
     ) -> bool:
+        """Update a schedule item's state with validation."""
         if state not in ScheduleService.VALID_STATES:
             raise ValueError("state must be one of: pending, expired, completed")
         for item in schedule.schedule_items:
@@ -269,6 +295,7 @@ class ScheduleService:
 
     @staticmethod
     def remove_schedule_item(schedule: Schedule, item_id: str) -> bool:
+        """Remove a schedule item and update derived collections."""
         for idx, item in enumerate(schedule.schedule_items):
             if item.item_id == item_id:
                 schedule.schedule_items.pop(idx)
@@ -279,6 +306,7 @@ class ScheduleService:
 
     @staticmethod
     def expire_overdue_items(schedule: Schedule, now: datetime | None = None) -> int:
+        """Mark all pending items with end_at before now as expired."""
         current_time = now or datetime.now()
         updated_count = 0
         for item in schedule.schedule_items:
@@ -289,6 +317,7 @@ class ScheduleService:
 
     @staticmethod
     def explain_plan(schedule: Schedule) -> str:
+        """Generate a human-readable explanation of the plan with reasoning."""
         if not schedule.schedule_items:
             return "No tasks were scheduled."
 

@@ -1,3 +1,5 @@
+"""Data models for PawPal+: Owner, Pet, Task, Schedule, and ScheduleItem domain classes."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -7,11 +9,13 @@ from uuid import uuid4
 
 
 def _clamp(value: int, lower: int = 0, upper: int = 100) -> int:
+	"""Clamp an integer value between lower and upper bounds (default 0-100)."""
 	return max(lower, min(upper, value))
 
 
 @dataclass
 class Owner:
+	"""Represents a pet owner with schedule, preferences, and activity tracking."""
 	name: str
 	age: int
 	owner_id: str = field(default_factory=lambda: str(uuid4()))
@@ -25,21 +29,25 @@ class Owner:
 	tasks: list[Task] = field(default_factory=list)
 
 	def work(self, hours: int) -> None:
+		"""Decrease owner energy level based on work duration."""
 		if hours < 0:
 			raise ValueError("hours must be non-negative")
 		self.energy_level = _clamp(self.energy_level - (hours * 5))
 
 	def chill(self, minutes: int) -> None:
+		"""Increase owner energy level by relaxing for specified minutes."""
 		if minutes < 0:
 			raise ValueError("minutes must be non-negative")
 		self.energy_level = _clamp(self.energy_level + (minutes // 15))
 
 	def sleep(self, hours: float) -> None:
+		"""Restore owner energy level by sleeping for specified hours."""
 		if hours < 0:
 			raise ValueError("hours must be non-negative")
 		self.energy_level = _clamp(self.energy_level + int(hours * 10))
 
 	def commute(self, minutes: int) -> None:
+		"""Decrease owner energy level based on commute duration."""
 		if minutes < 0:
 			raise ValueError("minutes must be non-negative")
 		self.energy_level = _clamp(self.energy_level - (minutes // 20))
@@ -47,6 +55,7 @@ class Owner:
 
 @dataclass
 class Pet:
+	"""Represents a pet with state, health, and care activity tracking."""
 	pet_type: str
 	breed: str
 	name: str
@@ -71,6 +80,7 @@ class Pet:
 	medication_frequency: str = ""
 
 	def chill(self, minutes: int) -> None:
+		"""Increase pet happiness and energy by relaxing together."""
 		if minutes < 0:
 			raise ValueError("minutes must be non-negative")
 		self.happiness = _clamp(self.happiness + (minutes // 15))
@@ -78,6 +88,7 @@ class Pet:
 		self.last_chilled_time = datetime.now()
 
 	def roam(self, minutes: int) -> None:
+		"""Increase pet activity level while expending energy and increasing hunger."""
 		if minutes < 0:
 			raise ValueError("minutes must be non-negative")
 		self.activity_level = _clamp(self.activity_level + (minutes // 10))
@@ -86,6 +97,7 @@ class Pet:
 		self.last_roamed_time = datetime.now()
 
 	def feed(self, amount: float) -> None:
+		"""Reduce hunger and improve health by feeding the pet."""
 		if amount <= 0:
 			raise ValueError("amount must be greater than 0")
 		self.hunger = _clamp(self.hunger - int(amount * 10))
@@ -93,12 +105,14 @@ class Pet:
 		self.last_fed_time = datetime.now()
 
 	def sleep(self, hours: float) -> None:
+		"""Restore pet energy and happiness through sleep."""
 		if hours < 0:
 			raise ValueError("hours must be non-negative")
 		self.energy = _clamp(self.energy + int(hours * 12))
 		self.happiness = _clamp(self.happiness + int(hours * 2))
 
 	def walk(self, minutes: int) -> None:
+		"""Improve pet activity, health, and hunger through exercise."""
 		if minutes < 0:
 			raise ValueError("minutes must be non-negative")
 		self.activity_level = _clamp(self.activity_level + (minutes // 8))
@@ -108,6 +122,7 @@ class Pet:
 		self.last_exercised_time = datetime.now()
 
 	def play(self, minutes: int) -> None:
+		"""Increase pet happiness while expending energy through play."""
 		if minutes < 0:
 			raise ValueError("minutes must be non-negative")
 		self.happiness = _clamp(self.happiness + (minutes // 8))
@@ -115,12 +130,14 @@ class Pet:
 		self.last_played_time = datetime.now()
 
 	def massage(self, minutes: int) -> None:
+		"""Improve pet happiness and health through massage."""
 		if minutes < 0:
 			raise ValueError("minutes must be non-negative")
 		self.happiness = _clamp(self.happiness + (minutes // 10))
 		self.health = _clamp(self.health + (minutes // 20))
 
 	def bathe(self) -> None:
+		"""Maximize pet hygiene while slightly decreasing happiness."""
 		self.hygiene = _clamp(100)
 		self.happiness = _clamp(self.happiness - 5)
 		self.last_bathed_time = datetime.now()
@@ -128,6 +145,7 @@ class Pet:
 
 @dataclass
 class Task:
+	"""Represents a pet care task with priority, scheduling, and scoring metadata."""
 	task_name: str
 	category: str
 	min_duration: int
@@ -151,6 +169,7 @@ class Task:
 
 	@classmethod
 	def create(cls, task_name: str, category: str, min_duration: int, duration: int) -> Task:
+		"""Factory method to create a validated task with duration constraints."""
 		if min_duration < 0 or duration < 0:
 			raise ValueError("durations must be non-negative")
 		if min_duration > duration:
@@ -163,6 +182,7 @@ class Task:
 		)
 
 	def edit(self, fields: dict[str, Any]) -> None:
+		"""Update task fields with validation for duration constraints."""
 		for key, value in fields.items():
 			if not hasattr(self, key):
 				raise KeyError(f"Unknown task field: {key}")
@@ -174,9 +194,11 @@ class Task:
 			raise ValueError("min_duration cannot be greater than duration")
 
 	def delete(self) -> None:
+		"""Mark task as deleted."""
 		self.status = "deleted"
 
 	def estimate_score(self, owner: Owner, pet: Pet) -> float:
+		"""Compute task priority score considering mandatory, starred, due date, and owner energy."""
 		score = float(self.priority * 10)
 		if self.is_mandatory:
 			score += 30
@@ -203,6 +225,7 @@ class Task:
 
 @dataclass
 class ScheduleItem:
+	"""Represents a scheduled pet care task with time window and completion state."""
 	task: Task
 	pet: Pet
 	start_at: datetime
@@ -216,6 +239,7 @@ class ScheduleItem:
 
 @dataclass
 class Schedule:
+	"""Represents a daily schedule with planned tasks and timed schedule items."""
 	hour: int
 	day: int
 	week: int
@@ -228,6 +252,7 @@ class Schedule:
 	pets_in_scope: list[Pet] = field(default_factory=list)
 
 	def score_plan(self) -> float:
+		"""Calculate overall plan quality score from task priorities and item completion states."""
 		if not self.schedule_items and not self.planned_tasks:
 			return 0.0
 
@@ -247,12 +272,14 @@ class Schedule:
 		return max(0.0, task_score + state_bonus)
 
 	def schedule(self, task: Task) -> bool:
+		"""Add a task to the planned tasks list if not already scheduled."""
 		if any(existing.task_id == task.task_id for existing in self.planned_tasks):
 			return False
 		self.planned_tasks.append(task)
 		return True
 
 	def schedule_at(self, task: Task, hour: int) -> bool:
+		"""Schedule a task at a specific hour and create a timed schedule item."""
 		if hour < 0 or hour > 23:
 			return False
 
@@ -278,7 +305,9 @@ class Schedule:
 			self.pets_in_scope.append(task.pet_reference)
 		return True
 
-	def forward(self, hours: int) -> None:
+	def forward(self, hours: int) -> None:		
+		"""Move schedule time backward by specified hours."""		
+		"""Advance schedule time forward by specified hours."""
 		if hours < 0:
 			raise ValueError("hours must be non-negative")
 		current = datetime(self.year, self.month, self.day, self.hour)
@@ -290,6 +319,7 @@ class Schedule:
 		self.week = int(future.strftime("%U"))
 
 	def backward(self, hours: int) -> None:
+		"""Move schedule time backward by specified hours."""
 		if hours < 0:
 			raise ValueError("hours must be non-negative")
 		current = datetime(self.year, self.month, self.day, self.hour)
@@ -301,6 +331,7 @@ class Schedule:
 		self.week = int(past.strftime("%U"))
 
 	def generate_daily_plan(self, tasks: list[Task], available_minutes: int) -> list[Task]:
+		"""Generate an optimal plan by prioritizing mandatory, high-priority, and starred tasks."""
 		if available_minutes <= 0:
 			self.planned_tasks = []
 			self.schedule_items = []
@@ -330,6 +361,7 @@ class Schedule:
 		return selected
 
 	def explain_plan(self) -> str:
+		"""Return a human-readable explanation of the schedule or plan."""
 		if self.schedule_items:
 			lines = []
 			for item in self.schedule_items:
